@@ -1,5 +1,3 @@
-'use server'
-
 /**
  * Progress tracking Server Actions
  *

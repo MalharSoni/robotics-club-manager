@@ -631,7 +631,7 @@ export async function getTeamInsights(teamId?: string) {
           id: m.id,
           title: m.title,
           category: m.category,
-          difficulty: m.difficulty,
+          level: m.level,
         })),
         upcomingDeadlines: upcomingDeadlines.map((t) => ({
           id: t.id,
