@@ -5,8 +5,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
+import { Progress } from '@/components/ui/progress'
 import { BootcampMilestoneChecklist } from '@/components/progress/bootcamp-milestone-checklist'
-import { Calendar, Mail, Phone, User } from 'lucide-react'
+import { Calendar, Mail, Phone, User, CheckCircle2, Circle } from 'lucide-react'
 
 type StudentWithProjects = Student & {
   projectRoles: (ProjectRole & {
@@ -38,6 +39,12 @@ type BootcampProgress = {
   percentage: number
 }
 
+type ProjectGoal = {
+  id: string
+  description: string
+  completed: boolean
+}
+
 export function StudentProgressDetail({
   student,
   bootcampProgress,
@@ -58,6 +65,40 @@ export function StudentProgressDetail({
       COMPLETED: 'bg-green-100 text-green-800 border-green-200',
     }
     return variants[status as keyof typeof variants] || variants.PLANNING
+  }
+
+  const parseProjectGoals = (goalsJson: unknown): ProjectGoal[] => {
+    try {
+      if (!goalsJson) return []
+      if (Array.isArray(goalsJson)) {
+        // Validate structure
+        return goalsJson.filter(
+          (goal): goal is ProjectGoal =>
+            typeof goal === 'object' &&
+            goal !== null &&
+            'id' in goal &&
+            'description' in goal &&
+            'completed' in goal &&
+            typeof goal.id === 'string' &&
+            typeof goal.description === 'string' &&
+            typeof goal.completed === 'boolean'
+        )
+      }
+      return []
+    } catch (error) {
+      console.warn('Failed to parse project goals:', error)
+      return []
+    }
+  }
+
+  const calculateGoalProgress = (goals: ProjectGoal[]) => {
+    if (goals.length === 0) return { completed: 0, total: 0, percentage: 0 }
+    const completed = goals.filter((g) => g.completed).length
+    return {
+      completed,
+      total: goals.length,
+      percentage: Math.round((completed / goals.length) * 100),
+    }
   }
 
   return (
@@ -129,56 +170,129 @@ export function StudentProgressDetail({
               </CardContent>
             </Card>
           ) : (
-            student.projectRoles.map((role) => (
-              <Card key={role.id}>
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <CardTitle>{role.project.name}</CardTitle>
-                    <Badge className={getProjectStatusBadge(role.project.status)} variant="outline">
-                      {role.project.status.replace('_', ' ')}
-                    </Badge>
-                  </div>
-                  {role.project.description && (
-                    <p className="text-sm text-gray-600">{role.project.description}</p>
-                  )}
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    <div>
-                      <span className="text-sm font-medium">Role:</span>{' '}
-                      <span className="text-sm text-gray-600">{role.role}</span>
+            student.projectRoles.map((role) => {
+              const goals = parseProjectGoals(role.project.goals)
+              const progress = calculateGoalProgress(goals)
+              const hasGoals = goals.length > 0
+              const allComplete = hasGoals && progress.completed === progress.total
+
+              return (
+                <Card key={role.id}>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <CardTitle>{role.project.name}</CardTitle>
+                      <Badge className={getProjectStatusBadge(role.project.status)} variant="outline">
+                        {role.project.status.replace('_', ' ')}
+                      </Badge>
                     </div>
-                    {role.project.media.length > 0 && (
+                    {role.project.description && (
+                      <p className="text-sm text-gray-600">{role.project.description}</p>
+                    )}
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
                       <div>
-                        <span className="text-sm font-medium block mb-2">Documentation:</span>
-                        <div className="grid grid-cols-4 gap-2">
-                          {role.project.media.slice(0, 8).map((media) => (
-                            <div key={media.id} className="aspect-square bg-gray-100 rounded overflow-hidden">
-                              {media.type === 'IMAGE' ? (
-                                <img
-                                  src={media.url}
-                                  alt={media.title || 'Project media'}
-                                  className="w-full h-full object-cover"
-                                />
-                              ) : (
-                                <div className="w-full h-full flex items-center justify-center text-xs text-gray-500">
-                                  VIDEO
-                                </div>
-                              )}
-                            </div>
-                          ))}
+                        <span className="text-sm font-medium">Role:</span>{' '}
+                        <span className="text-sm text-gray-600">{role.role}</span>
+                      </div>
+
+                      {/* Milestones Section */}
+                      <div className="border-t pt-4">
+                        <div className="flex items-center justify-between mb-3">
+                          <span className="text-sm font-medium">Project Milestones</span>
+                          {hasGoals && (
+                            <Badge
+                              variant={allComplete ? 'default' : 'secondary'}
+                              className={allComplete ? 'bg-green-600 text-white' : ''}
+                            >
+                              {progress.completed}/{progress.total} Complete
+                            </Badge>
+                          )}
                         </div>
-                        {role.project.media.length > 8 && (
-                          <p className="text-xs text-gray-500 mt-2">
-                            +{role.project.media.length - 8} more files
+
+                        {!hasGoals ? (
+                          <p className="text-sm text-gray-500 py-2">
+                            No milestones defined for this project
                           </p>
+                        ) : (
+                          <>
+                            {/* Progress Bar */}
+                            <div className="mb-4">
+                              <Progress value={progress.percentage} className="h-2" />
+                              <p className="text-xs text-gray-500 mt-1">
+                                {progress.percentage}% complete
+                              </p>
+                            </div>
+
+                            {/* Goal List */}
+                            <div className="space-y-2">
+                              {goals.map((goal) => (
+                                <div
+                                  key={goal.id}
+                                  className={`flex items-start gap-3 p-2 rounded transition-colors ${
+                                    goal.completed ? 'bg-green-50' : 'bg-gray-50'
+                                  }`}
+                                >
+                                  {goal.completed ? (
+                                    <CheckCircle2 className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
+                                  ) : (
+                                    <Circle className="h-5 w-5 text-gray-400 flex-shrink-0 mt-0.5" />
+                                  )}
+                                  <span
+                                    className={`text-sm ${
+                                      goal.completed ? 'text-gray-600 line-through' : 'text-gray-900'
+                                    }`}
+                                  >
+                                    {goal.description}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+
+                            {allComplete && (
+                              <div className="mt-3 p-2 bg-green-100 border border-green-200 rounded">
+                                <p className="text-sm text-green-800 font-medium">
+                                  ✓ All milestones complete!
+                                </p>
+                              </div>
+                            )}
+                          </>
                         )}
                       </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            ))
+
+                      {/* Documentation Section */}
+                      {role.project.media.length > 0 && (
+                        <div className="border-t pt-4">
+                          <span className="text-sm font-medium block mb-2">Documentation:</span>
+                          <div className="grid grid-cols-4 gap-2">
+                            {role.project.media.slice(0, 8).map((media) => (
+                              <div key={media.id} className="aspect-square bg-gray-100 rounded overflow-hidden">
+                                {media.type === 'IMAGE' ? (
+                                  <img
+                                    src={media.url}
+                                    alt={media.title || 'Project media'}
+                                    className="w-full h-full object-cover"
+                                  />
+                                ) : (
+                                  <div className="w-full h-full flex items-center justify-center text-xs text-gray-500">
+                                    VIDEO
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                          {role.project.media.length > 8 && (
+                            <p className="text-xs text-gray-500 mt-2">
+                              +{role.project.media.length - 8} more files
+                            </p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              )
+            })
           )}
         </TabsContent>
       </Tabs>
