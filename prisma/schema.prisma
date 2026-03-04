@@ -1,0 +1,806 @@
+// schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ==================== AUTHENTICATION ====================
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String
+  passwordHash  String? // null if OAuth only
+  role          UserRole  @default(COACH)
+  emailVerified DateTime?
+  image         String?
+
+  // Relations
+  coachProfile CoachProfile?
+  sessions     Session[]
+  accounts     Account[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([email])
+}
+
+enum UserRole {
+  ADMIN // Platform admin
+  COACH // Team coach
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+// ==================== COACH & ORGANIZATION ====================
+
+model CoachProfile {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  organization String? // School/club name
+  phone        String?
+  bio          String? @db.Text
+
+  // Relations
+  teams        TeamCoach[]
+  createdTeams Team[]      @relation("CreatedBy")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ==================== TEAMS & SEASONS ====================
+
+model Team {
+  id          String  @id @default(cuid())
+  name        String // "Team Alpha", "7850A", etc.
+  teamNumber  String? // VEX team number
+  description String? @db.Text
+  active      Boolean @default(true)
+
+  // Season tracking
+  seasonId String?
+  season   Season? @relation(fields: [seasonId], references: [id], onDelete: SetNull)
+
+  // Creator
+  createdById String
+  createdBy   CoachProfile @relation("CreatedBy", fields: [createdById], references: [id])
+
+  // Relations
+  coaches     TeamCoach[]
+  members     TeamMember[]
+  tasks       Task[]
+  projects    Project[]
+  reportCards ReportCard[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([teamNumber, seasonId]) // Unique per season
+  @@index([seasonId, active])
+  @@index([createdById])
+}
+
+model Season {
+  id        String    @id @default(cuid())
+  name      String // "2024-2025", "High Stakes", etc.
+  startDate DateTime
+  endDate   DateTime?
+  current   Boolean   @default(false)
+
+  // Relations
+  teams Team[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([current])
+}
+
+// Many-to-many: Coaches to Teams
+model TeamCoach {
+  id      String    @id @default(cuid())
+  teamId  String
+  coachId String
+  role    CoachRole @default(ASSISTANT)
+
+  team  Team         @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  coach CoachProfile @relation(fields: [coachId], references: [id], onDelete: Cascade)
+
+  joinedAt DateTime @default(now())
+
+  @@unique([teamId, coachId])
+  @@index([coachId])
+  @@index([teamId])
+}
+
+enum CoachRole {
+  HEAD_COACH // Full permissions
+  ASSISTANT // Can view/edit most things
+  OBSERVER // Read-only
+}
+
+// ==================== STUDENTS ====================
+
+model Student {
+  id        String  @id @default(cuid())
+  firstName String
+  lastName  String
+  email     String? @unique
+  phone     String?
+  grade     Int? // 6-12
+  gradYear  Int? // Graduation year
+
+  // Parent contact
+  parentName  String?
+  parentEmail String?
+  parentPhone String?
+
+  // Profile
+  bio    String? @db.Text
+  avatar String? // URL to photo
+
+  active Boolean @default(true)
+
+  // Relations
+  teams              TeamMember[]
+  tasks              TaskAssignment[]
+  curriculumProgress CurriculumProgress[]
+  reportCards        ReportCard[]
+  skills             StudentSkill[]
+  projectRoles       ProjectRole[]
+  attendanceRecords  AttendanceRecord[]
+  dailyPerformance   DailyPerformance[]
+  xFactorNotes       XFactorNote[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([email])
+  @@index([active])
+}
+
+// Many-to-many: Students to Teams with role
+model TeamMember {
+  id        String @id @default(cuid())
+  teamId    String
+  studentId String
+
+  team    Team    @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  // Student's primary role on this team
+  primaryRole TeamRole @default(MEMBER)
+
+  // Additional roles (stored as array)
+  secondaryRoles TeamRole[] @default([])
+
+  joinedAt DateTime  @default(now())
+  leftAt   DateTime? // Track when student leaves team
+  active   Boolean   @default(true)
+
+  @@unique([teamId, studentId])
+  @@index([studentId])
+  @@index([teamId, active])
+}
+
+enum TeamRole {
+  CAPTAIN // Team leader
+  DRIVER // Robot driver
+  PROGRAMMER // Software
+  BUILDER // Mechanical
+  DESIGNER // CAD/design
+  SCOUT // Competition scouting
+  NOTEBOOK // Engineering notebook
+  MEMBER // General member
+}
+
+// ==================== TASKS ====================
+
+model Task {
+  id          String  @id @default(cuid())
+  title       String
+  description String? @db.Text
+
+  // Assignment
+  teamId String
+  team   Team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  // Task details
+  priority Priority     @default(MEDIUM)
+  status   TaskStatus   @default(TODO)
+  category TaskCategory @default(GENERAL)
+
+  // Dates
+  dueDate     DateTime?
+  completedAt DateTime?
+
+  // Assignment type
+  assignmentType AssignmentType @default(TEAM)
+
+  // Relations
+  assignments TaskAssignment[]
+  attachments TaskAttachment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([teamId, status])
+  @@index([dueDate])
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  BLOCKED
+  REVIEW
+  COMPLETED
+}
+
+enum TaskCategory {
+  GENERAL
+  BUILD
+  PROGRAMMING
+  DESIGN
+  NOTEBOOK
+  COMPETITION_PREP
+  OUTREACH
+  FUNDRAISING
+}
+
+enum AssignmentType {
+  TEAM // Assigned to whole team
+  INDIVIDUAL // Assigned to specific students
+  GROUP // Assigned to subset of team
+}
+
+// Many-to-many: Tasks to Students
+model TaskAssignment {
+  id        String @id @default(cuid())
+  taskId    String
+  studentId String
+
+  task    Task    @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  status TaskStatus @default(TODO) // Individual status
+  notes  String?    @db.Text
+
+  assignedAt DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([taskId, studentId])
+  @@index([studentId, status])
+}
+
+model TaskAttachment {
+  id     String @id @default(cuid())
+  taskId String
+  task   Task   @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  fileName String
+  fileUrl  String
+  fileSize Int
+  mimeType String
+
+  uploadedAt DateTime @default(now())
+
+  @@index([taskId])
+}
+
+// ==================== CURRICULUM ====================
+
+model CurriculumModule {
+  id          String             @id @default(cuid())
+  title       String
+  description String?            @db.Text
+  category    CurriculumCategory
+
+  // Ordering and structure
+  order      Int                @default(0)
+  parentId   String? // For nested modules
+  parent     CurriculumModule?  @relation("ModuleHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
+  subModules CurriculumModule[] @relation("ModuleHierarchy")
+
+  // Content
+  objectives String[] // Learning objectives
+  resources  Json? // Links, videos, documents
+
+  // Difficulty
+  level SkillLevel @default(BEGINNER)
+
+  // Estimated time
+  estimatedHours Float?
+
+  // Relations
+  lessons  CurriculumLesson[]
+  progress CurriculumProgress[]
+
+  active Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([category, active])
+  @@index([order])
+}
+
+enum CurriculumCategory {
+  MECHANICAL
+  ELECTRICAL
+  PROGRAMMING
+  CAD_DESIGN
+  NOTEBOOK
+  SOFT_SKILLS
+  COMPETITION_STRATEGY
+  SAFETY
+}
+
+model CurriculumLesson {
+  id       String           @id @default(cuid())
+  moduleId String
+  module   CurriculumModule @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+
+  title       String
+  description String? @db.Text
+  content     String  @db.Text // Markdown or HTML
+
+  order Int @default(0)
+
+  // Assessment
+  hasQuiz  Boolean @default(false)
+  quizData Json? // Quiz questions/answers
+
+  // Resources
+  videoUrl    String?
+  attachments String[] // URLs
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([moduleId, order])
+}
+
+// Track student progress through curriculum
+model CurriculumProgress {
+  id        String @id @default(cuid())
+  studentId String
+  moduleId  String
+
+  student Student          @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  module  CurriculumModule @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+
+  status ProgressStatus @default(NOT_STARTED)
+
+  // Progress tracking
+  startedAt      DateTime?
+  completedAt    DateTime?
+  lastAccessedAt DateTime?
+
+  // Assessment
+  quizScore Float? // Percentage if quiz exists
+  attempts  Int    @default(0)
+
+  // Notes from coach
+  coachNotes String? @db.Text
+
+  // Evidence photo linking
+  evidenceMediaId String?
+  evidenceMedia   ProjectMedia? @relation(fields: [evidenceMediaId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([studentId, moduleId])
+  @@index([studentId, status])
+  @@index([moduleId])
+}
+
+enum ProgressStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+  MASTERED
+}
+
+// ==================== SKILLS ====================
+
+model Skill {
+  id          String        @id @default(cuid())
+  name        String        @unique
+  description String?       @db.Text
+  category    SkillCategory
+  level       SkillLevel    @default(BEGINNER)
+
+  // Icon/badge
+  icon  String?
+  color String? // Hex color for UI
+
+  // Relations
+  students StudentSkill[]
+
+  active Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([category, active])
+}
+
+enum SkillCategory {
+  MECHANICAL
+  ELECTRICAL
+  PROGRAMMING
+  CAD_DESIGN
+  PROJECT_MANAGEMENT
+  COMMUNICATION
+  LEADERSHIP
+  PROBLEM_SOLVING
+}
+
+enum SkillLevel {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+  EXPERT
+}
+
+// Many-to-many: Students to Skills with proficiency
+model StudentSkill {
+  id        String @id @default(cuid())
+  studentId String
+  skillId   String
+
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  skill   Skill   @relation(fields: [skillId], references: [id], onDelete: Cascade)
+
+  proficiency SkillLevel @default(BEGINNER)
+
+  // Verification
+  verified   Boolean   @default(false)
+  verifiedAt DateTime?
+
+  // Evidence
+  notes       String? @db.Text
+  evidenceUrl String? // Link to project/video demonstrating skill
+
+  acquiredAt DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([studentId, skillId])
+  @@index([studentId])
+  @@index([skillId])
+}
+
+// ==================== PROJECTS ====================
+
+model Project {
+  id          String  @id @default(cuid())
+  name        String
+  description String? @db.Text
+
+  // Assignment
+  teamId String
+  team   Team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  // Project details
+  category ProjectCategory @default(ROBOT)
+  status   ProjectStatus   @default(PLANNING)
+
+  // Dates
+  startDate   DateTime?
+  endDate     DateTime?
+  completedAt DateTime?
+
+  // Documentation
+  goals    String[] // Project objectives
+  outcomes String[] // Achieved outcomes
+
+  // Media
+  coverImage String?
+
+  // Relations
+  roles ProjectRole[]
+  media ProjectMedia[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([teamId, status])
+}
+
+enum ProjectCategory {
+  ROBOT
+  MECHANISM
+  AUTONOMOUS
+  OUTREACH
+  FUNDRAISING
+  OTHER
+}
+
+enum ProjectStatus {
+  PLANNING
+  IN_PROGRESS
+  TESTING
+  COMPLETED
+  ARCHIVED
+}
+
+// Many-to-many: Students to Projects with roles
+model ProjectRole {
+  id        String @id @default(cuid())
+  projectId String
+  studentId String
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  role String // "Lead Programmer", "Builder", etc.
+
+  // Contribution details
+  contributions String? @db.Text
+  hoursSpent    Float?  @default(0)
+
+  joinedAt  DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([projectId, studentId])
+  @@index([studentId])
+  @@index([projectId])
+}
+
+model ProjectMedia {
+  id        String  @id @default(cuid())
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  type        MediaType
+  title       String?
+  description String?   @db.Text
+
+  url       String // S3/R2 URL
+  thumbnail String? // For videos/large images
+
+  fileSize Int?
+  mimeType String?
+
+  order Int @default(0)
+
+  uploadedAt DateTime @default(now())
+
+  // Reverse relation for evidence photos in curriculum progress
+  curriculumEvidence CurriculumProgress[]
+
+  @@index([projectId, order])
+}
+
+enum MediaType {
+  IMAGE
+  VIDEO
+  DOCUMENT
+  LINK
+}
+
+// ==================== REPORT CARDS ====================
+
+model ReportCard {
+  id        String @id @default(cuid())
+  studentId String
+  teamId    String
+
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  team    Team    @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  // Reporting period
+  periodName String // "Fall 2024", "Q1 2024", etc.
+  startDate  DateTime
+  endDate    DateTime
+
+  // Overall assessment
+  overallGrade String? // "A", "Excellent", etc.
+  attendance   Float? // Percentage
+
+  // Ratings (1-5 scale)
+  technicalSkills Int? // 1-5
+  teamwork        Int? // 1-5
+  leadership      Int? // 1-5
+  communication   Int? // 1-5
+  problemSolving  Int? // 1-5
+  initiative      Int? // 1-5
+
+  // Narrative feedback
+  strengths      String? @db.Text
+  areasForGrowth String? @db.Text
+  coachComments  String? @db.Text
+  goals          String? @db.Text // Goals for next period
+
+  // Metrics
+  tasksCompleted    Int   @default(0)
+  projectsCompleted Int   @default(0)
+  hoursLogged       Float @default(0)
+
+  // Publishing
+  published   Boolean   @default(false)
+  publishedAt DateTime?
+
+  // Export tracking
+  exportToken String? @unique // For secure sharing
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([studentId, teamId, periodName])
+  @@index([studentId, published])
+  @@index([teamId, published])
+  @@index([exportToken])
+}
+
+// ==================== EXPORT & SHARING ====================
+
+model ExportToken {
+  id    String @id @default(cuid())
+  token String @unique @default(cuid())
+
+  // What is being shared
+  entityType ExportEntityType
+  entityId   String // ID of student, team, or report card
+
+  // Access control
+  expiresAt   DateTime?
+  accessCount Int       @default(0)
+  maxAccess   Int? // Limit number of views
+
+  // Security
+  requiresPassword Boolean @default(false)
+  passwordHash     String?
+
+  // Metadata
+  createdBy String // Coach user ID
+  purpose   String? // "Parent report", "Student portfolio", etc.
+
+  active Boolean @default(true)
+
+  createdAt      DateTime  @default(now())
+  lastAccessedAt DateTime?
+
+  @@index([token, active])
+  @@index([entityType, entityId])
+}
+
+enum ExportEntityType {
+  REPORT_CARD
+  STUDENT_PROFILE
+  STUDENT_PORTFOLIO
+  TEAM_SUMMARY
+}
+
+// ==================== DAILY STATS (Saturday Sessions) ====================
+
+model AttendanceRecord {
+  id        String  @id @default(cuid())
+  studentId String
+  student   Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  date   DateTime // Saturday session date
+  status AttendanceStatus @default(PRESENT)
+
+  recordedBy String // Coach user ID
+  notes      String? @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([studentId, date])
+  @@index([studentId])
+  @@index([date])
+  @@index([status])
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  EXCUSED
+}
+
+model DailyPerformance {
+  id        String  @id @default(cuid())
+  studentId String
+  student   Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  date   DateTime // Session date
+  rating Int // 1-5 scale
+  notes  String?  @db.Text
+
+  recordedBy String // Coach user ID
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([studentId, date])
+  @@index([studentId])
+  @@index([date])
+  @@index([rating])
+}
+
+model XFactorNote {
+  id        String  @id @default(cuid())
+  studentId String
+  student   Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  date DateTime // Session date
+  note String   @db.Text // Max 280 chars enforced in app
+  tags String[] // Quick tags like "Leadership", "Breakthrough", etc.
+
+  recordedBy String // Coach user ID
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([studentId])
+  @@index([date])
+}
+
+// ==================== AUDIT LOG ====================
+
+model AuditLog {
+  id String @id @default(cuid())
+
+  userId     String // Who performed the action
+  action     String // "CREATE", "UPDATE", "DELETE"
+  entityType String // "Student", "Task", "ReportCard"
+  entityId   String // ID of affected entity
+
+  // Change details
+  changes Json? // Before/after values
+
+  ipAddress String?
+  userAgent String?
+
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([entityType, entityId])
+  @@index([createdAt])
+}
