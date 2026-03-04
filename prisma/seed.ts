@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client'
+import { PrismaClient, SkillCategory, SkillLevel, CurriculumCategory } from '@prisma/client'
 import { PrismaPg } from '@prisma/adapter-pg'
 import { Pool } from 'pg'
 import { hash } from 'bcryptjs'
@@ -87,7 +87,7 @@ async function main() {
   })
 
   // Create comprehensive skills
-  const skills = [
+  const skills: Array<{ name: string; category: SkillCategory; level: SkillLevel; color: string; description: string }> = [
     // Mechanical Skills
     { name: 'Hand Tools', category: 'MECHANICAL', level: 'BEGINNER', color: '#f59e0b', description: 'Basic hand tool usage and safety' },
     { name: 'Power Tools', category: 'MECHANICAL', level: 'INTERMEDIATE', color: '#d97706', description: 'Operating drills, saws, and power equipment' },
@@ -120,19 +120,19 @@ async function main() {
     { name: 'Troubleshooting', category: 'ELECTRICAL', level: 'INTERMEDIATE', color: '#a16207', description: 'Diagnosing and fixing electrical issues' },
     { name: 'Motor Control', category: 'ELECTRICAL', level: 'ADVANCED', color: '#854d0e', description: 'Motor selection and control systems' },
 
-    // Soft Skills
-    { name: 'Teamwork', category: 'COMMUNICATION', level: 'BEGINNER', color: '#ec4899', description: 'Collaborating effectively with team members' },
-    { name: 'Leadership', category: 'LEADERSHIP', level: 'INTERMEDIATE', color: '#db2777', description: 'Leading team activities and projects' },
-    { name: 'Presentation Skills', category: 'COMMUNICATION', level: 'INTERMEDIATE', color: '#be185d', description: 'Presenting ideas and projects' },
-    { name: 'Technical Writing', category: 'COMMUNICATION', level: 'ADVANCED', color: '#9f1239', description: 'Writing technical documentation' },
+    // Soft Skills - Map to PROJECT_MANAGEMENT (closest valid category)
+    { name: 'Teamwork', category: 'PROJECT_MANAGEMENT', level: 'BEGINNER', color: '#ec4899', description: 'Collaborating effectively with team members' },
+    { name: 'Leadership', category: 'PROJECT_MANAGEMENT', level: 'INTERMEDIATE', color: '#db2777', description: 'Leading team activities and projects' },
+    { name: 'Presentation Skills', category: 'PROJECT_MANAGEMENT', level: 'INTERMEDIATE', color: '#be185d', description: 'Presenting ideas and projects' },
+    { name: 'Technical Writing', category: 'PROJECT_MANAGEMENT', level: 'ADVANCED', color: '#9f1239', description: 'Writing technical documentation' },
     { name: 'Project Management', category: 'PROJECT_MANAGEMENT', level: 'ADVANCED', color: '#881337', description: 'Managing projects and timelines' },
     { name: 'Time Management', category: 'PROJECT_MANAGEMENT', level: 'INTERMEDIATE', color: '#4c0519', description: 'Prioritizing and managing time effectively' },
 
-    // Problem Solving
-    { name: 'Critical Thinking', category: 'PROBLEM_SOLVING', level: 'INTERMEDIATE', color: '#8b5cf6', description: 'Analyzing and solving complex problems' },
-    { name: 'Strategy Development', category: 'PROBLEM_SOLVING', level: 'ADVANCED', color: '#7c3aed', description: 'Developing competition strategies' },
-    { name: 'Innovation', category: 'PROBLEM_SOLVING', level: 'ADVANCED', color: '#6d28d9', description: 'Creating innovative solutions' },
-    { name: 'Data Analysis', category: 'PROBLEM_SOLVING', level: 'INTERMEDIATE', color: '#5b21b6', description: 'Analyzing match data and metrics' },
+    // Problem Solving - Map to PROJECT_MANAGEMENT (closest valid category for strategic thinking)
+    { name: 'Critical Thinking', category: 'PROJECT_MANAGEMENT', level: 'INTERMEDIATE', color: '#8b5cf6', description: 'Analyzing and solving complex problems' },
+    { name: 'Strategy Development', category: 'PROJECT_MANAGEMENT', level: 'ADVANCED', color: '#7c3aed', description: 'Developing competition strategies' },
+    { name: 'Innovation', category: 'PROJECT_MANAGEMENT', level: 'ADVANCED', color: '#6d28d9', description: 'Creating innovative solutions' },
+    { name: 'Data Analysis', category: 'PROJECT_MANAGEMENT', level: 'INTERMEDIATE', color: '#5b21b6', description: 'Analyzing match data and metrics' },
   ]
 
   const createdSkills: any[] = []
@@ -493,7 +493,7 @@ async function main() {
   console.log(`✅ Assigned ${totalSkillsAssigned} skills to students with varied proficiency levels`)
 
   // Create comprehensive curriculum modules
-  const modules = [
+  const modules: Array<{ id: string; title: string; description: string; category: CurriculumCategory; level: SkillLevel; order: number; objectives: string[]; estimatedHours: number }> = [
     {
       id: 'module-1',
       title: 'Safety Fundamentals',
