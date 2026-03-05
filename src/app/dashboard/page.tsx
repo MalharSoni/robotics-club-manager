@@ -1,8 +1,8 @@
 import { requireAuth } from '@/lib/auth-helpers'
 import prisma from '@/lib/prisma'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/supabase/card'
-import { Badge } from '@/components/ui/supabase/badge'
-import { Users, CheckSquare, BookOpen, Trophy, TrendingUp } from 'lucide-react'
+import { StatCard } from '@/components/stat-card'
+import { Users, Cpu, Percent, CalendarCheck, TriangleAlert, Trophy } from 'lucide-react'
+import Link from 'next/link'
 
 async function getDashboardData(userId: string) {
   const coachProfile = await prisma.coachProfile.findUnique({
@@ -18,20 +18,6 @@ async function getDashboardData(userId: string) {
                   tasks: true,
                 },
               },
-              members: {
-                where: { active: true },
-                include: {
-                  student: true,
-                },
-                take: 5,
-              },
-              tasks: {
-                where: {
-                  status: { notIn: ['COMPLETED'] },
-                },
-                orderBy: { dueDate: 'asc' },
-                take: 5,
-              },
             },
           },
         },
@@ -39,167 +25,199 @@ async function getDashboardData(userId: string) {
     },
   })
 
-  return coachProfile
+  // Get all students across all teams
+  const totalStudents = await prisma.student.count({
+    where: {
+      active: true,
+      teams: {
+        some: {
+          teamId: {
+            in: coachProfile?.teams.map(t => t.teamId) || [],
+          },
+        },
+      },
+    },
+  })
+
+  // Get overdue tasks count
+  const overdueTasks = await prisma.task.count({
+    where: {
+      teamId: {
+        in: coachProfile?.teams.map(t => t.teamId) || [],
+      },
+      status: { notIn: ['COMPLETED'] },
+      dueDate: {
+        lt: new Date(),
+      },
+    },
+  })
+
+  return {
+    coachProfile,
+    totalStudents,
+    overdueTasks,
+  }
 }
 
 export default async function DashboardPage() {
   const session = await requireAuth()
-  const data = await getDashboardData(session.user.id)
+  const { coachProfile, totalStudents, overdueTasks } = await getDashboardData(session.user.id)
 
-  if (!data || data.teams.length === 0) {
+  if (!coachProfile || coachProfile.teams.length === 0) {
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Welcome, {session.user.name}!</h1>
-          <p className="text-muted-foreground mt-1">Get started by creating your first team</p>
+          <h1 className="text-[22px] font-[800]" style={{ color: 'var(--black)', letterSpacing: '-.02em' }}>
+            Welcome, {session.user.name}!
+          </h1>
+          <p className="text-[13px] mt-0.5" style={{ color: 'var(--gray-1)' }}>
+            Get started by creating your first team
+          </p>
         </div>
-        <Card>
-          <CardHeader>
-            <CardTitle>No Teams Yet</CardTitle>
-            <CardDescription>
-              Create your first robotics team to start managing students, tasks, and curriculum.
-            </CardDescription>
-          </CardHeader>
-        </Card>
       </div>
     )
   }
 
-  const team = data.teams[0].team
-  const totalStudents = team._count.members
-  const activeTasks = team._count.tasks
+  const activeTeams = coachProfile.teams.length
+  const totalTasks = coachProfile.teams.reduce((acc, t) => acc + t.team._count.tasks, 0)
 
   return (
-    <div className="space-y-8">
-      <div className="flex items-center justify-between">
+    <div className="flex flex-col gap-6">
+      {/* Page Header */}
+      <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
-          <p className="text-muted-foreground mt-1">Welcome back, {session.user.name}!</p>
+          <h1 className="text-[22px] font-[800]" style={{ color: 'var(--black)', letterSpacing: '-.02em' }}>
+            Dashboard
+          </h1>
+          <p className="text-[13px] mt-0.5" style={{ color: 'var(--gray-1)' }}>
+            Welcome back, {session.user.name}
+          </p>
         </div>
-        <Badge variant="success" className="h-8 px-3 text-sm">
-          <TrendingUp className="h-3.5 w-3.5 mr-1.5" />
-          Season Active
-        </Badge>
+        <div className="flex gap-2">
+          <Link
+            href="/dashboard/reports"
+            className="inline-flex items-center gap-1.5 text-[13px] font-[600] px-[14px] py-[7px] rounded-[6px] border-[1.5px] bg-transparent transition-colors"
+            style={{ borderColor: 'var(--gray-3)', color: 'var(--black-3)' }}
+          >
+            Export Report
+          </Link>
+          <Link
+            href="/dashboard/students"
+            className="inline-flex items-center gap-1.5 text-[13px] font-[600] px-[14px] py-[7px] rounded-[6px] transition-opacity active:scale-[0.97]"
+            style={{ background: 'var(--yellow)', color: 'var(--black)' }}
+          >
+            <Users className="w-[13px] h-[13px]" />
+            View Students
+          </Link>
+        </div>
       </div>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Card className="hover:shadow-lg transition-shadow">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Students</CardTitle>
-            <Users className="h-5 w-5 text-primary" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-foreground">{totalStudents}</div>
-            <p className="text-xs text-muted-foreground mt-1">Active team members</p>
-          </CardContent>
-        </Card>
+      {/* Stat Cards Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-[14px]">
+        <Link href="/dashboard/students" className="no-underline">
+          <StatCard
+            label="Total Students"
+            value={totalStudents}
+            meta="Active members"
+            icon={<Users className="w-5 h-5" />}
+          />
+        </Link>
 
-        <Card className="hover:shadow-lg transition-shadow">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Tasks</CardTitle>
-            <CheckSquare className="h-5 w-5 text-primary" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-foreground">{activeTasks}</div>
-            <p className="text-xs text-muted-foreground mt-1">In progress or pending</p>
-          </CardContent>
-        </Card>
+        <Link href="/dashboard/teams" className="no-underline">
+          <StatCard
+            label="Active Teams"
+            value={activeTeams}
+            meta="VEX V5 & VIQRC"
+            accent="yellow"
+            icon={<Cpu className="w-5 h-5" />}
+          />
+        </Link>
 
-        <Card className="hover:shadow-lg transition-shadow">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Team</CardTitle>
-            <Trophy className="h-5 w-5 text-primary" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-foreground">{team.name}</div>
-            <p className="text-xs text-muted-foreground mt-1">{team.teamNumber}</p>
-          </CardContent>
-        </Card>
+        <StatCard
+          label="Attendance"
+          value="—"
+          meta="Coming soon"
+          icon={<Percent className="w-5 h-5" />}
+        />
 
-        <Card className="hover:shadow-lg transition-shadow">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Curriculum</CardTitle>
-            <BookOpen className="h-5 w-5 text-primary" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-foreground">Active</div>
-            <p className="text-xs text-muted-foreground mt-1">Season in progress</p>
-          </CardContent>
-        </Card>
+        <StatCard
+          label="Meetings"
+          value="—"
+          meta="No upcoming meetings"
+          icon={<CalendarCheck className="w-5 h-5" />}
+        />
+
+        <Link href="/dashboard/tasks" className="no-underline">
+          <StatCard
+            label="Overdue Tasks"
+            value={overdueTasks}
+            meta={overdueTasks > 0 ? "Needs attention" : "All caught up"}
+            accent={overdueTasks > 0 ? "red" : undefined}
+            icon={<TriangleAlert className="w-5 h-5" />}
+          />
+        </Link>
+
+        <StatCard
+          label="Next Comp"
+          value="TBD"
+          meta="No upcoming competitions"
+          accent="black"
+          icon={<Trophy className="w-5 h-5" />}
+        />
       </div>
 
-      {/* Recent Students & Active Tasks */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <Card className="hover:shadow-lg transition-shadow">
-          <CardHeader>
-            <CardTitle>Team Roster</CardTitle>
-            <CardDescription>Your active team members</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {team.members.map((member) => (
-                <div key={member.id} className="flex items-center justify-between p-2 rounded-lg hover:bg-muted/50 transition-colors">
-                  <div className="flex items-center space-x-3">
-                    <div className="flex items-center justify-center h-10 w-10 rounded-full bg-primary/10 text-primary font-semibold border border-primary/20">
-                      {member.student.firstName[0]}{member.student.lastName[0]}
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-foreground">
-                        {member.student.firstName} {member.student.lastName}
-                      </p>
-                      <p className="text-xs text-muted-foreground">{member.primaryRole}</p>
-                    </div>
-                  </div>
-                  <Badge variant="outline" className="text-xs">
-                    Grade {member.student.grade}
-                  </Badge>
-                </div>
-              ))}
+      {/* Quick Links Section */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-[14px]">
+        <Link
+          href="/dashboard/students"
+          className="bg-white border border-[var(--gray-3)] rounded-[10px] p-5 hover:shadow-[0_4px_12px_rgba(0,0,0,.10)] transition-shadow no-underline group"
+        >
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-10 h-10 rounded-[6px] flex items-center justify-center" style={{ background: 'var(--yellow)' }}>
+              <Users className="w-5 h-5" style={{ color: 'var(--black)' }} />
             </div>
-          </CardContent>
-        </Card>
+            <div className="text-[14px] font-[700]" style={{ color: 'var(--black)' }}>
+              Student Management
+            </div>
+          </div>
+          <p className="text-[13px] leading-relaxed" style={{ color: 'var(--gray-1)' }}>
+            View roster, track progress, and manage student profiles
+          </p>
+        </Link>
 
-        {/* Active Tasks */}
-        <Card className="hover:shadow-lg transition-shadow">
-          <CardHeader>
-            <CardTitle>Active Tasks</CardTitle>
-            <CardDescription>Tasks that need attention</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {team.tasks.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No active tasks</p>
-              ) : (
-                team.tasks.map((task) => (
-                  <div key={task.id} className="flex items-start justify-between p-2 rounded-lg hover:bg-muted/50 transition-colors">
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-foreground">{task.title}</p>
-                      <p className="text-xs text-muted-foreground">{task.category}</p>
-                    </div>
-                    <div className="flex flex-col items-end gap-1">
-                      <Badge
-                        variant={
-                          task.priority === 'URGENT' ? 'destructive' :
-                          task.priority === 'HIGH' ? 'warning' :
-                          task.priority === 'MEDIUM' ? 'info' :
-                          'secondary'
-                        }
-                      >
-                        {task.priority}
-                      </Badge>
-                      {task.dueDate && (
-                        <span className="text-xs text-muted-foreground">
-                          Due {new Date(task.dueDate).toLocaleDateString()}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                ))
-              )}
+        <Link
+          href="/dashboard/curriculum"
+          className="bg-white border border-[var(--gray-3)] rounded-[10px] p-5 hover:shadow-[0_4px_12px_rgba(0,0,0,.10)] transition-shadow no-underline group"
+        >
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-10 h-10 rounded-[6px] flex items-center justify-center" style={{ background: 'var(--gray-4)', border: '1px solid var(--gray-3)' }}>
+              <CalendarCheck className="w-5 h-5" style={{ color: 'var(--black)' }} />
             </div>
-          </CardContent>
-        </Card>
+            <div className="text-[14px] font-[700]" style={{ color: 'var(--black)' }}>
+              Foundation Bootcamp
+            </div>
+          </div>
+          <p className="text-[13px] leading-relaxed" style={{ color: 'var(--gray-1)' }}>
+            Track bootcamp milestones from safety training to competition prep
+          </p>
+        </Link>
+
+        <Link
+          href="/dashboard/projects"
+          className="bg-white border border-[var(--gray-3)] rounded-[10px] p-5 hover:shadow-[0_4px_12px_rgba(0,0,0,.10)] transition-shadow no-underline group"
+        >
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-10 h-10 rounded-[6px] flex items-center justify-center" style={{ background: 'var(--gray-4)', border: '1px solid var(--gray-3)' }}>
+              <Trophy className="w-5 h-5" style={{ color: 'var(--black)' }} />
+            </div>
+            <div className="text-[14px] font-[700]" style={{ color: 'var(--black)' }}>
+              Projects & Roles
+            </div>
+          </div>
+          <p className="text-[13px] leading-relaxed" style={{ color: 'var(--gray-1)' }}>
+            Manage robot builds, documentation, and student responsibilities
+          </p>
+        </Link>
       </div>
     </div>
   )
