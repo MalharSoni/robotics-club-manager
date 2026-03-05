@@ -43,13 +43,18 @@ export default async function StudentProgressPage({
   }
 
   // Fetch bootcamp progress
-  const bootcampProgress = await getStudentBootcampProgress(student.id)
+  const bootcampProgressResult = await getStudentBootcampProgress(student.id)
+
+  // Handle error case
+  if ('error' in bootcampProgressResult) {
+    notFound()
+  }
 
   return (
     <div className="space-y-6">
       <StudentProgressDetail
         student={student}
-        bootcampProgress={bootcampProgress}
+        bootcampProgress={bootcampProgressResult}
       />
 
       {/* Parent Share Link Manager - only show if coach is authenticated */}

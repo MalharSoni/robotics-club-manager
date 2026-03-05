@@ -1,0 +1,29 @@
+
+> robotics-club-manager@0.1.0 build
+> next build
+
+▲ Next.js 16.1.6 (Turbopack)
+- Environments: .env
+- Experiments (use with caution):
+  · optimizePackageImports
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 3.6s
+  Running TypeScript ...
+Failed to compile.
+
+./prisma/seed.ts:142:7
+Type error: Type '{ name: string; category: string; level: string; color: string; description: string; }' is not assignable to type '(Without<SkillCreateInput, SkillUncheckedCreateInput> & SkillUncheckedCreateInput) | (Without<...> & SkillCreateInput)'.
+  Type '{ name: string; category: string; level: string; color: string; description: string; }' is not assignable to type 'Without<SkillUncheckedCreateInput, SkillCreateInput> & SkillCreateInput'.
+    Type '{ name: string; category: string; level: string; color: string; description: string; }' is not assignable to type 'SkillCreateInput'.
+      Types of property 'category' are incompatible.
+        Type 'string' is not assignable to type 'SkillCategory'.
+
+[0m [90m 140 |[39m       where[33m:[39m { name[33m:[39m skill[33m.[39mname }[33m,[39m
+ [90m 141 |[39m       update[33m:[39m {}[33m,[39m
+[31m[1m>[22m[39m[90m 142 |[39m       create[33m:[39m skill[33m,[39m
+ [90m     |[39m       [31m[1m^[22m[39m
+ [90m 143 |[39m     })
+ [90m 144 |[39m     createdSkills[33m.[39mpush(created)
+ [90m 145 |[39m   }[0m
+Next.js build worker exited with code: 1 and signal: null

@@ -18,12 +18,13 @@ export default async function StudentsPage() {
         },
       },
       projectRoles: {
-        include: {
+        where: {
           project: {
-            where: {
-              status: { in: ['PLANNING', 'IN_PROGRESS', 'TESTING'] },
-            },
+            status: { in: ['PLANNING', 'IN_PROGRESS', 'TESTING'] },
           },
+        },
+        include: {
+          project: true,
         },
       },
     },

@@ -1,36 +1,65 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🤖 Robotics Club Manager
 
-## Getting Started
+A comprehensive management system for robotics teams with beautiful Supabase-inspired UI.
 
-First, run the development server:
+## ✨ Features
+
+- **Student Stats Quick-Entry** - Saturday attendance, performance ratings, X-Factor notes
+- **Dashboard** - Team overview with stats and active tasks
+- **Student Management** - Complete student profiles and tracking
+- **Curriculum & Projects** - Learning paths and project management
+- **Analytics** - Team insights and performance metrics
+
+## 🎨 Design - Supabase UI
+
+- Clean dark mode with Jungle Green (#34B27B) accents
+- Professional, developer-focused aesthetic
+- No flashy animations - pure functionality
+- Fully responsive design
+
+## 🚀 Quick Start
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000)
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+**Login:** coach@robotics.com / password123
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## 📦 Deploy to Production
 
-## Learn More
+See `DEPLOY_3_STEPS.md` for deployment instructions.
 
-To learn more about Next.js, take a look at the following resources:
+Quick deploy:
+```bash
+vercel
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## 🧪 Testing
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Automated Playwright testing:
+```bash
+./run-tests.sh
+```
 
-## Deploy on Vercel
+Test plan: `tests/e2e-test.md`
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## 🛠️ Tech Stack
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Next.js 16.1.6 + App Router + Turbopack
+- Supabase PostgreSQL + Prisma 7.3.0
+- NextAuth v5
+- Tailwind CSS + Supabase UI theme
+- Vercel deployment
+
+## 📚 Documentation
+
+- `DEPLOY_3_STEPS.md` - Quick deployment
+- `DEPLOYMENT_GUIDE.md` - Full deployment guide
+- `tests/e2e-test.md` - Test checklist
+
+---
+
+Built with [Claude Code](https://claude.com/claude-code) 🤖

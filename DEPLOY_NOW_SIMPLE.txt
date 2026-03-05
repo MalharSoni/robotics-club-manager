@@ -1,0 +1,94 @@
+═══════════════════════════════════════════════════════════
+   🚀 DEPLOY YOUR ROBOTICS CLUB MANAGER TO VERCEL
+═══════════════════════════════════════════════════════════
+
+STEP 1: Run this command in your terminal
+──────────────────────────────────────────
+
+vercel
+
+
+STEP 2: Answer the prompts (just press Enter for most)
+──────────────────────────────────────────
+
+? Set up and deploy?
+→ Press Y and Enter
+
+? Which scope?
+→ Select "malhar-sonis-projects" (should be option 1)
+→ Press Enter
+
+? Link to existing project?
+→ Press N and Enter
+
+? What's your project's name?
+→ Type: robotics-club-manager
+→ Or just press Enter (it will use the folder name)
+
+? In which directory is your code located?
+→ Press Enter (use current directory)
+
+? Want to override the settings?
+→ Press N and Enter
+
+
+STEP 3: Wait for deployment (1-2 minutes)
+──────────────────────────────────────────
+
+You'll see:
+✓ Uploading...
+✓ Building...
+✓ Deployed!
+
+Your preview URL will be shown!
+
+
+STEP 4: Add environment variables
+──────────────────────────────────────────
+
+Go to: https://vercel.com/dashboard
+
+Click: robotics-club-manager → Settings → Environment Variables
+
+Add these 5 variables (copy/paste each):
+
+Name: DATABASE_URL
+Value: postgresql://postgres:RoboticsClub2026!@db.qrducdpazrxttkcqpufm.supabase.co:5432/postgres?pgbouncer=true&connection_limit=1
+Environments: ✓ Production ✓ Preview ✓ Development
+
+Name: DIRECT_URL
+Value: postgresql://postgres:RoboticsClub2026!@db.qrducdpazrxttkcqpufm.supabase.co:5432/postgres
+Environments: ✓ Production ✓ Preview ✓ Development
+
+Name: AUTH_SECRET
+Value: kN8zR2xL9pQ5vW7tY4bC6mF3sG1hD0jK
+Environments: ✓ Production ✓ Preview ✓ Development
+
+Name: AUTH_URL
+Value: https://robotics-club-manager.vercel.app
+Environments: ✓ Production ✓ Preview ✓ Development
+
+Name: NEXT_PUBLIC_APP_URL
+Value: https://robotics-club-manager.vercel.app
+Environments: ✓ Production ✓ Preview ✓ Development
+
+
+STEP 5: Deploy to production
+──────────────────────────────────────────
+
+vercel --prod
+
+
+DONE! 🎉
+──────────────────────────────────────────
+
+Your site is live at:
+→ https://robotics-club-manager.vercel.app
+
+Login with:
+→ Email: coach@robotics.com
+→ Password: password123
+
+═══════════════════════════════════════════════════════════
+
+Need help? Check DEPLOY_3_STEPS.md for more details.
