@@ -1,5 +1,13 @@
 import { Prisma } from '@prisma/client'
-import type { StudentFilters, StudentPagination } from '@/lib/validations/student'
+import type { StudentFilterInput } from '@/lib/validations/student'
+
+type StudentFilters = StudentFilterInput
+type StudentPagination = {
+  page?: number
+  limit?: number
+  sortBy?: string
+  sortOrder?: 'asc' | 'desc'
+}
 
 /**
  * Optimized Prisma query patterns for Student operations

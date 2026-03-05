@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import { getSession } from '@/lib/auth-helpers'
-import { DashboardNav } from '@/components/dashboard-nav'
+import { DashboardNavSidebar } from '@/components/dashboard-nav-sidebar'
 
 export default async function DashboardLayout({
   children,
@@ -14,9 +14,9 @@ export default async function DashboardLayout({
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <DashboardNav user={session.user} />
-      <main id="main-content" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="min-h-screen flex" style={{ background: 'var(--gray-4)' }}>
+      <DashboardNavSidebar user={session.user} />
+      <main id="main-content" className="flex-1" style={{ marginLeft: 'var(--sidebar-w)', padding: '28px' }}>
         {children}
       </main>
     </div>

@@ -20,6 +20,11 @@ export const updateStudentSchema = createStudentSchema.partial().extend({
 export const studentFilterSchema = z.object({
   search: z.string().optional(),
   grade: z.number().int().min(9).max(12).optional(),
+  gradYear: z.number().int().optional(),
+  active: z.boolean().optional(),
+  hasEmail: z.boolean().optional(),
+  hasParentEmail: z.boolean().optional(),
+  hasParentContact: z.boolean().optional(),
   role: z.nativeEnum(TeamRole).optional(),
   teamId: z.string().optional(),
 })
