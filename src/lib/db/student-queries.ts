@@ -5,6 +5,7 @@ type StudentFilters = StudentFilterInput
 type StudentPagination = {
   page?: number
   limit?: number
+  pageSize?: number
   sortBy?: string
   sortOrder?: 'asc' | 'desc'
 }
@@ -277,26 +278,27 @@ export function buildStudentWhereClause(
 // Build orderBy clause from pagination params
 export function buildStudentOrderBy(
   pagination: StudentPagination
-): Prisma.StudentOrderByWithRelationInput {
-  const { sortBy, sortOrder } = pagination
+): Prisma.StudentOrderByWithRelationInput | Prisma.StudentOrderByWithRelationInput[] {
+  const { sortBy = 'lastName', sortOrder = 'asc' } = pagination
 
   if (sortBy === 'firstName' || sortBy === 'lastName') {
     // For names, secondary sort by the other name field
     return [
-      { [sortBy]: sortOrder },
-      { [sortBy === 'firstName' ? 'lastName' : 'firstName']: sortOrder },
+      { [sortBy]: sortOrder } as Prisma.StudentOrderByWithRelationInput,
+      { [sortBy === 'firstName' ? 'lastName' : 'firstName']: sortOrder } as Prisma.StudentOrderByWithRelationInput,
     ]
   }
 
-  return { [sortBy]: sortOrder }
+  return { [sortBy]: sortOrder } as Prisma.StudentOrderByWithRelationInput
 }
 
 // Calculate pagination skip/take
 export function getPaginationParams(pagination: StudentPagination) {
-  const { page, pageSize } = pagination
+  const { page = 1, pageSize = 20, limit } = pagination
+  const size = limit || pageSize
   return {
-    skip: (page - 1) * pageSize,
-    take: pageSize,
+    skip: (page - 1) * size,
+    take: size,
   }
 }
 
